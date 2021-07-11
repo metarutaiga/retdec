@@ -90,8 +90,10 @@ void VarRenamer::assignName(ShPtr<Variable> var, const std::string &name,
 
 	// Check whether renaming the variable to name would not introduce a name
 	// clash. If so, then generate a new name (see the function's description).
-	std::string newName(ensureNameUniqueness(var, name, func));
-	var->setName(newName);
+	if (var->getName().empty() || var->getName().find("var") == 0) {
+		std::string newName(ensureNameUniqueness(var, name, func));
+		var->setName(newName);
+	}
 
 	// Update data members.
 	renamedVars.insert(var);

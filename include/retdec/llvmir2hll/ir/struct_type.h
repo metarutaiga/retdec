@@ -29,16 +29,19 @@ class StructType final: public Type {
 public:
 	/// Vector of types of elements in the structure.
 	using ElementTypes = std::vector<ShPtr<Type>>;
+	using ElementNames = std::vector<std::string>;
 
 public:
 	static ShPtr<StructType> create(ElementTypes elementTypes,
-		const std::string &name = "");
+		ElementNames elementNames, const std::string &name = "");
 
 	virtual ShPtr<Value> clone() override;
 	virtual bool isEqualTo(ShPtr<Value> otherValue) const override;
 
 	const ElementTypes &getElementTypes() const;
+	const ElementNames &getElementNames() const;
 	const ShPtr<Type> getTypeOfElement(ShPtr<ConstInt> index) const;
+	const std::string getNameOfElement(ShPtr<ConstInt> index) const;
 	bool hasName() const;
 	const std::string &getName() const;
 
@@ -50,11 +53,13 @@ public:
 private:
 	// Since instances are created by calling the static function create(), the
 	// constructor can be private.
-	StructType(ElementTypes elementTypes, const std::string &name);
+	StructType(ElementTypes elementTypes, ElementNames elementNames,
+		const std::string &name);
 
 private:
 	/// Types of elements in the structure.
 	ElementTypes elementTypes;
+	ElementNames elementNames;
 
 	/// Name of the structure.
 	std::string name;

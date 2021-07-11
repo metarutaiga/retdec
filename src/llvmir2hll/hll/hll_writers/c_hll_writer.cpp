@@ -601,7 +601,13 @@ void CHLLWriter::visit(ShPtr<StructIndexOpExpr> expr) {
 	// Element.
 	assert(isa<ConstInt>(expr->getSecondOperand()));
 	ShPtr<ConstInt> ci = cast<ConstInt>(expr->getSecondOperand());
-	out->memberId("e" + ci->getTextRepr());
+	std::string metadata = ci->getMetadata();
+	if (metadata.empty() == false) {
+		out->memberId(metadata);
+	}
+	else {
+		out->memberId("e" + ci->getTextRepr());
+	}
 }
 
 void CHLLWriter::visit(ShPtr<DerefOpExpr> expr) {
@@ -1898,7 +1904,13 @@ void CHLLWriter::emitConstStruct(ShPtr<ConstStruct> constant, bool emitCast) {
 		}
 
 		out->operatorX(".");
-		out->memberId("e" + member.first->getTextRepr());
+		std::string metadata = member.first->getMetadata();
+		if (metadata.empty() == false) {
+			out->memberId(metadata);
+		}
+		else {
+			out->memberId("e" + member.first->getTextRepr());
+		}
 
 		out->operatorX("=", true, true);
 		member.second->accept(this);
@@ -1956,6 +1968,7 @@ void CHLLWriter::emitStructDeclaration(ShPtr<StructType> structType,
 	}
 	// For each element...
 	const StructType::ElementTypes &elements = structType->getElementTypes();
+	const StructType::ElementNames &names = structType->getElementNames();
 	for (StructType::ElementTypes::size_type i = 0; i < elements.size(); ++i) {
 		if (!emitInline) {
 			out->space(getCurrentIndent());
@@ -1963,7 +1976,10 @@ void CHLLWriter::emitStructDeclaration(ShPtr<StructType> structType,
 		ShPtr<Type> elemType(elements.at(i));
 		// Create a dummy variable so we can use emitVarWithType().
 		// All elements are named e#, where # is a number.
-		emitVarWithType(Variable::create("e" + toString(i), elemType));
+		std::string name = "e" + toString(i);
+		if (names.size() > i)
+			name = names[i];
+		emitVarWithType(Variable::create(name, elemType));
 		out->punctuation(';');
 		if (!emitInline) {
 			out->newLine();

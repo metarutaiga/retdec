@@ -6,6 +6,10 @@
 
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Type.h>
+#include <llvm/IR/Metadata.h>
+#include <llvm/IR/DebugInfoMetadata.h>
+#include <llvm/IR/LLVMContext.h>
+#include "../build/external/src/llvm-project/lib/IR/LLVMContextImpl.h"
 
 #include "retdec/llvmir2hll/ir/array_type.h"
 #include "retdec/llvmir2hll/ir/float_type.h"
@@ -71,6 +75,8 @@ ShPtr<Type> LLVMTypeConverter::convert(const llvm::Type *type) {
 		birType = convert(llvmFuncType);
 	} else if (type->isVoidTy()) {
 		birType = VoidType::create();
+	} else if (type->isMetadataTy()) {
+		birType = UnknownType::create();
 	} else {
 		FAIL("unsupported type: " << const_cast<llvm::Type &>(*type));
 	}
@@ -134,7 +140,29 @@ ShPtr<StructType> LLVMTypeConverter::convert(const llvm::StructType *type) {
 	}
 
 	std::string name = type->hasName() ? type->getName() : "";
-	return StructType::create(elemTypes, name);
+
+	StructType::ElementNames elemNames;
+	std::string realName = name.c_str() + name.find('.') + 1;
+	for (auto type : type->getContext().pImpl->DIDerivedTypes) {
+		if (type->getName() == realName) {
+			llvm::DITypeRef baseType = type->getBaseType();
+			if (llvm::DICompositeType::classof(baseType)) {
+				llvm::DICompositeType* type = (llvm::DICompositeType*)baseType.resolve();
+				if (type->getName() == realName) {
+					llvm::DINodeArray elements = type->getElements();
+					for (auto node : elements) {
+						if (llvm::DIDerivedType::classof(node)) {
+							llvm::DIDerivedType* type = (llvm::DIDerivedType*)node;
+							elemNames.push_back(type->getName());
+						}
+					}
+				}
+			}
+			break;
+		}
+	}
+
+	return StructType::create(elemTypes, elemNames, name);
 }
 
 /**

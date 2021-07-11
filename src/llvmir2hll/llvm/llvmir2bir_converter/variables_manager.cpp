@@ -6,7 +6,10 @@
 
 #include <llvm/ADT/Twine.h>
 #include <llvm/IR/Instruction.h>
+#include <llvm/IR/Type.h>
 #include <llvm/IR/Value.h>
+#include <llvm/IR/Metadata.h>
+#include <llvm/IR/DebugInfoMetadata.h>
 
 #include "retdec/llvmir2hll/ir/function.h"
 #include "retdec/llvmir2hll/ir/module.h"
@@ -27,7 +30,7 @@ namespace llvmir2hll {
 * @brief Constructs a new variables manager.
 */
 VariablesManager::VariablesManager(ShPtr<Module> resModule): localVarsMap(),
-	varNameGen(NumVarNameGen::create()), resModule(resModule) {}
+	varNameGen(NumVarNameGen::create()), metaVal(nullptr), resModule(resModule) {}
 
 /**
 * @brief Resets local variables in the variables manager.
@@ -37,6 +40,7 @@ VariablesManager::VariablesManager(ShPtr<Module> resModule): localVarsMap(),
 void VariablesManager::reset() {
 	localVarsMap.clear();
 	varNameGen->restart();
+	metaVal = nullptr;
 }
 
 void VariablesManager::addGlobalValVarPair(llvm::Value *val, ShPtr<Variable> var) {
@@ -67,6 +71,9 @@ ShPtr<Variable> VariablesManager::getVarByValue(llvm::Value *val) {
 void VariablesManager::assignNameToValue(llvm::Value *val) const {
 	// LLVM guarantees to choose unique name if the generated name is already
 	// taken.
+	if (val->getType()->isMetadataTy()) {
+		return;
+	}
 	val->setName(varNameGen->getNextVarName());
 }
 
@@ -90,6 +97,36 @@ ShPtr<Variable> VariablesManager::getOrCreateLocalVar(llvm::Value *val) {
 	Address a;
 	if (auto* insn = llvm::dyn_cast<llvm::Instruction>(val)) {
 		a = LLVMSupport::getInstAddress(insn);
+	}
+
+	if (val->getType()->isMetadataTy()) {
+		llvm::MetadataAsValue* value = (llvm::MetadataAsValue*)val;
+		llvm::Metadata* metadata = value->getMetadata();
+		unsigned metadataID = metadata->getMetadataID();
+		if (llvm::DILocalVariable::classof(metadata)) {
+			llvm::DILocalVariable* localVariable = (llvm::DILocalVariable*)metadata;
+
+			unsigned arg = localVariable->getArg();
+			if (arg) {
+				std::string name = "var" + std::to_string(arg);
+				for (auto var : localVarsMap) {
+					if (var.second->getName() == name) {
+						var.second->setName(localVariable->getName());
+						break;
+					}
+				}
+			}
+			else {
+				auto var = getOrCreateLocalVar(metaVal);
+				var->setName(localVariable->getName());
+			}
+			metaVal = nullptr;
+		}
+		else if (llvm::LocalAsMetadata::classof(metadata)) {
+			llvm::LocalAsMetadata* var = (llvm::LocalAsMetadata*)metadata;
+
+			metaVal = var->getValue();
+		}
 	}
 
 	auto var = Variable::create(val->getName(), UnknownType::create(), a);

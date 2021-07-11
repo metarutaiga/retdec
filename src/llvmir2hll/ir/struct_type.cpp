@@ -20,11 +20,12 @@ namespace llvmir2hll {
 *
 * See create() for more information.
 */
-StructType::StructType(ElementTypes elementTypes, const std::string &name):
-	Type(), elementTypes(elementTypes), name(name) {}
+StructType::StructType(ElementTypes elementTypes, ElementNames elementNames,
+	const std::string &name) : Type(), elementTypes(elementTypes), 
+	elementNames(elementNames), name(name) {}
 
 ShPtr<Value> StructType::clone() {
-	return StructType::create(elementTypes);
+	return StructType::create(elementTypes, elementNames);
 }
 
 bool StructType::isEqualTo(ShPtr<Value> otherValue) const {
@@ -59,6 +60,9 @@ const std::string &StructType::getName() const {
 const StructType::ElementTypes &StructType::getElementTypes() const {
 	return elementTypes;
 }
+const StructType::ElementNames& StructType::getElementNames() const {
+	return elementNames;
+}
 
 /**
 * @brief Returns the type of the given element.
@@ -72,6 +76,12 @@ const ShPtr<Type> StructType::getTypeOfElement(ShPtr<ConstInt> index) const {
 		"there is no element on index " << i);
 	return elementTypes[i];
 }
+const std::string StructType::getNameOfElement(ShPtr<ConstInt> index) const {
+	std::uint64_t i = index->getValue().getZExtValue();
+	if (elementNames.size() <= i)
+		return std::string();
+	return elementNames[i];
+}
 
 /**
 * @brief Creates a new structured type.
@@ -80,8 +90,8 @@ const ShPtr<Type> StructType::getTypeOfElement(ShPtr<ConstInt> index) const {
 * @param name Name of the structure (if any).
 */
 ShPtr<StructType> StructType::create(ElementTypes elementTypes,
-		const std::string &name) {
-	return ShPtr<StructType>(new StructType(elementTypes, name));
+		ElementNames elementNames, const std::string &name) {
+	return ShPtr<StructType>(new StructType(elementTypes, elementNames, name));
 }
 
 void StructType::accept(Visitor *v) {

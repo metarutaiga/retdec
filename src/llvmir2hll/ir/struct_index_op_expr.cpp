@@ -34,7 +34,9 @@ ShPtr<Type> StructIndexOpExpr::getType() const {
 	}
 
 	if (ShPtr<StructType> op1StructType = cast<StructType>(op1Type)) {
-		return op1StructType->getTypeOfElement(ucast<ConstInt>(op2));
+		ShPtr<ConstInt> ci = ucast<ConstInt>(op2);
+		ci->setMetadata(op1StructType->getNameOfElement(ci));
+		return op1StructType->getTypeOfElement(ci);
 	}
 
 	// The type cannot be computed.

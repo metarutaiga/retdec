@@ -55,6 +55,7 @@ private:
 
 	/// Variable names generator.
 	UPtr<VarNameGen> varNameGen;
+	llvm::Value* metaVal;
 
 	/// The resulting module in BIR.
 	ShPtr<Module> resModule;
